@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pressure Simulation (P = F/A) — Class 8</title>
+  <style>
+    :root{
+      --bg:#f5f7ff;
+      --card:#ffffff;
+      --text:#0b1020;
+      --muted:#4a5568;
+      --line:#e7e9f6;
+      --accent:#2b59ff;
+      --accent2:#ff3d7f;
+      --accent3:#00b894;
+      --shadow: 0 10px 25px rgba(11,16,32,.08);
+    }
+    body{ margin:0; font-family:system-ui, Arial, sans-serif; background:var(--bg); color:var(--text); }
+    header{
+      position:sticky; top:0; z-index:10;
+      background:linear-gradient(90deg, #2b59ff, #7a3dff, #ff3d7f);
+      color:#fff; padding:14px 16px; box-shadow:var(--shadow);
+    }
+    header h1{ margin:0; font-size:18px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    header p{ margin:6px 0 0; font-size:13px; opacity:.95; }
+    .pill{
+      background:rgba(255,255,255,.18);
+      border:1px solid rgba(255,255,255,.28);
+      padding:6px 10px; border-radius:999px; font-size:12px;
+    }
+    main{ max-width:1100px; margin:16px auto; padding:0 16px 26px; display:grid; gap:16px; }
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:16px;
+      box-shadow:var(--shadow);
+      padding:14px;
+    }
+    .grid{
+      display:grid; gap:12px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width:900px){
+      .grid{ grid-template-columns: 1.25fr .75fr; }
+    }
+    canvas{
+      width:100%;
+      height:380px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background: radial-gradient(circle at 30% 20%, #ffffff, #f7f9ff);
+    }
+    .panel{ display:grid; gap:10px; }
+    .box{
+      background:#fbfcff;
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:10px;
+    }
+    .row{ display:flex; gap:10px; align-items:center; justify-content:space-between; }
+    label{ font-size:13px; color:var(--muted); }
+    input[type="range"]{ width:100%; }
+    .value{ font-weight:800; font-size:16px; }
+    .big{
+      font-size:22px; font-weight:900;
+      background:linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip:text; background-clip:text;
+      color:transparent;
+    }
+    .btns{ display:flex; flex-wrap:wrap; gap:8px; }
+    button{
+      cursor:pointer;
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:999px;
+      padding:8px 12px;
+      font-size:13px;
+    }
+    button.primary{
+      background: linear-gradient(90deg, var(--accent), #7a3dff);
+      color:#fff; border-color:transparent;
+    }
+    button.sound{
+      background:#0b1020; color:#fff; border-color:transparent;
+    }
+    button.sound.off{ background:#fff; color:#0b1020; border:1px solid var(--line); }
+    .note{ font-size:12px; color:var(--muted); line-height:1.35; }
+    .legend{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    .dot{ width:10px; height:10px; border-radius:50%; display:inline-block; }
+    .dot.a{ background:var(--accent); }
+    .dot.b{ background:var(--accent2); }
+    .dot.c{ background:var(--accent3); }
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>
+    Pressure from Force & Area (Class 8) — Simulation
+    <span class="pill">Formula: P = F / A</span>
+    <button id="soundToggle" class="sound off">🔇 Sound OFF</button>
+  </h1>
+  <p>Move sliders → see pressure change + animation + sound. Smaller area → higher pressure.</p>
+</header>
+
+<main>
+  <section class="card">
+    <div class="grid">
+      <div>
+        <canvas id="sim" width="1000" height="600"></canvas>
+        <div class="legend" style="margin-top:10px;">
+          <span><span class="dot a"></span> Force</span>
+          <span><span class="dot b"></span> Area</span>
+          <span><span class="dot c"></span> Pressure level</span>
+        </div>
+        <div class="note" style="margin-top:6px;">
+          Examples: <b>Needle</b> → very small area → very high pressure. <b>Wide straps</b> → large area → lower pressure.
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="box">
+          <div class="row">
+            <label>Force (N)</label>
+            <span class="value" id="forceVal">50</span>
+          </div>
+          <input id="force" type="range" min="0" max="200" step="1" value="50" />
+          <div class="note">More force → more pressure (if area fixed).</div>
+        </div>
+
+        <div class="box">
+          <div class="row">
+            <label>Area (cm²)</label>
+            <span class="value" id="areaVal">10</span>
+          </div>
+          <input id="area" type="range" min="1" max="100" step="1" value="10" />
+          <div class="note">Less area → more pressure (if force fixed).</div>
+        </div>
+
+        <div class="box">
+          <div class="row">
+            <label>Pressure (Pa)</label>
+            <span class="big" id="pPa">50000</span>
+          </div>
+          <div class="row">
+            <label>Pressure Level</label>
+            <span class="value" id="pLevel">Medium</span>
+          </div>
+          <div class="note">Converted using: 1 cm² = 0.0001 m²</div>
+        </div>
+
+        <div class="box">
+          <div class="btns">
+            <button class="primary" id="pressBtn">🟦 Press</button>
+            <button id="needleBtn">Needle</button>
+            <button id="heelBtn">High Heel</button>
+            <button id="strapBtn">Wide Strap</button>
+            <button id="resetBtn">Reset</button>
+          </div>
+          <div class="note" style="margin-top:8px;">
+            “Press” plays a stronger sound and shows a bigger impact animation.
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="note">
+            <b>What students learn</b><br/>
+            - Pressure depends on Force and Area.<br/>
+            - Same force on smaller area gives more pressure.<br/>
+            - Unit: Pascal (Pa) = N/m².
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ---------- Canvas fit (hiDPI) ---------- */
+function fitCanvas(canvas){
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.round(rect.width * dpr);
+  const h = Math.round(rect.height * dpr);
+  if (canvas.width !== w || canvas.height !== h){ canvas.width=w; canvas.height=h; }
+  return canvas.getContext("2d");
+}
+const clamp = (x,a,b)=>Math.max(a,Math.min(b,x));
+
+/* ---------- DOM ---------- */
+const canvas = document.getElementById("sim");
+const forceEl = document.getElementById("force");
+const areaEl  = document.getElementById("area");
+const forceValEl = document.getElementById("forceVal");
+const areaValEl  = document.getElementById("areaVal");
+const pPaEl = document.getElementById("pPa");
+const pLevelEl = document.getElementById("pLevel");
+
+const soundToggle = document.getElementById("soundToggle");
+const pressBtn = document.getElementById("pressBtn");
+const needleBtn = document.getElementById("needleBtn");
+const heelBtn   = document.getElementById("heelBtn");
+const strapBtn  = document.getElementById("strapBtn");
+const resetBtn  = document.getElementById("resetBtn");
+
+/* ---------- Physics (simple) ---------- */
+function pressurePa(F, areaCm2){
+  const areaM2 = areaCm2 * 0.0001; // 1 cm² = 1e-4 m²
+  return areaM2 === 0 ? 0 : (F / areaM2);
+}
+function level(pa){
+  if (pa < 20000) return "Low";
+  if (pa < 70000) return "Medium";
+  if (pa < 140000) return "High";
+  return "Very High";
+}
+
+/* ---------- Sound (Web Audio) ---------- */
+let audioCtx=null, enabled=false, master=null;
+
+function ensureAudio(){
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  master = audioCtx.createGain();
+  master.gain.value = 0.6;
+  master.connect(audioCtx.destination);
+}
+function clickBeep(freq=750, dur=0.04){
+  if (!enabled) return;
+  ensureAudio();
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = "sine";
+  o.frequency.value = freq;
+  g.gain.value = 0.0001;
+  o.connect(g); g.connect(master);
+  const t = audioCtx.currentTime;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.08, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function thump(intensity01){
+  if (!enabled) return;
+  ensureAudio();
+  // low “thump” + short noise burst
+  const t = audioCtx.currentTime;
+
+  const o = audioCtx.createOscillator();
+  o.type = "sine";
+  o.frequency.setValueAtTime(120, t);
+  o.frequency.exponentialRampToValueAtTime(60, t + 0.09);
+
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.25 * (0.3 + 0.7*intensity01), t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+
+  o.connect(g); g.connect(master);
+  o.start(t); o.stop(t + 0.14);
+
+  // noise burst
+  const bufLen = Math.floor(audioCtx.sampleRate * 0.08);
+  const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i=0;i<bufLen;i++) data[i] = (Math.random()*2-1) * 0.5;
+
+  const n = audioCtx.createBufferSource(); n.buffer = buf;
+  const nf = audioCtx.createBiquadFilter();
+  nf.type="lowpass"; nf.frequency.value = 600;
+
+  const ng = audioCtx.createGain();
+  ng.gain.setValueAtTime(0.0001, t);
+  ng.gain.exponentialRampToValueAtTime(0.14*(0.3+0.7*intensity01), t+0.01);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t+0.08);
+
+  n.connect(nf); nf.connect(ng); ng.connect(master);
+  n.start(t); n.stop(t+0.09);
+}
+
+/* ---------- Colorful SVG “images” (drawn on canvas) ---------- */
+function drawSVG(ctx, svg, x, y, w, h){
+  const img = new Image();
+  const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  img.src = url;
+  img.onload = ()=> ctx.drawImage(img, x, y, w, h);
+  // Note: first frame might draw later; we keep redrawing in animation anyway.
+}
+const svgHand = `
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0" stop-color="#2b59ff"/><stop offset="1" stop-color="#ff3d7f"/>
+    </linearGradient>
+  </defs>
+  <rect rx="32" x="14" y="14" width="212" height="212" fill="url(#g)" opacity="0.14"/>
+  <path d="M72 146c0-10 8-18 18-18h48v-10c0-8 6-14 14-14s14 6 14 14v46c0 22-18 40-40 40H110c-21 0-38-17-38-38v-20z"
+        fill="#ffd7b5" stroke="#0b1020" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M150 104V78c0-8 6-14 14-14s14 6 14 14v44" fill="none" stroke="#0b1020" stroke-width="6" stroke-linecap="round"/>
+  <path d="M122 128V88c0-8 6-14 14-14s14 6 14 14v40" fill="none" stroke="#0b1020" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="84" cy="170" r="10" fill="#ff3d7f"/>
+</svg>`;
+const svgNeedle = `
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
+  <rect rx="32" x="14" y="14" width="212" height="212" fill="#2b59ff" opacity="0.14"/>
+  <path d="M55 70h100l30 30-70 70-30-30z" fill="#ffffff" stroke="#0b1020" stroke-width="6" />
+  <path d="M155 100l40-20-20 40z" fill="#ff3d7f" stroke="#0b1020" stroke-width="6" />
+  <path d="M92 150l-25 25" stroke="#00b894" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="67" cy="175" r="9" fill="#00b894"/>
+</svg>`;
+const svgStrap = `
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
+  <rect rx="32" x="14" y="14" width="212" height="212" fill="#ff3d7f" opacity="0.14"/>
+  <rect x="55" y="70" width="130" height="44" rx="18" fill="#0b1020"/>
+  <rect x="55" y="132" width="130" height="44" rx="18" fill="#2b59ff"/>
+  <circle cx="85" cy="92" r="8" fill="#00b894"/>
+  <circle cx="155" cy="154" r="8" fill="#00b894"/>
+</svg>`;
+
+/* ---------- Animation state ---------- */
+let impact = 0; // 0..1
+let last = performance.now();
+
+function updateUI(){
+  const F = Number(forceEl.value);
+  const A = Number(areaEl.value);
+  const P = pressurePa(F, A);
+
+  forceValEl.textContent = F;
+  areaValEl.textContent = A;
+  pPaEl.textContent = Math.round(P);
+  pLevelEl.textContent = level(P);
+  return {F,A,P};
+}
+
+function draw(now){
+  const dt = Math.min(0.03, (now - last)/1000);
+  last = now;
+
+  const ctx = fitCanvas(canvas);
+  const W = canvas.width, H = canvas.height;
+
+  const {F,A,P} = updateUI();
+
+  // normalize for visuals
+  const pNorm = clamp(P / 160000, 0, 1);
+  impact = Math.max(0, impact - dt*1.6);
+
+  // scene layout
+  const groundY = H*0.78;
+  const cx = W*0.55;
+
+  // background accents
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.fillStyle = "#2b59ff";
+  ctx.beginPath(); ctx.arc(W*0.18, H*0.25, Math.min(W,H)*0.22, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#ff3d7f";
+  ctx.beginPath(); ctx.arc(W*0.28, H*0.50, Math.min(W,H)*0.16, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#00b894";
+  ctx.beginPath(); ctx.arc(W*0.20, H*0.78, Math.min(W,H)*0.12, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // ground
+  ctx.strokeStyle = "#0b1020";
+  ctx.globalAlpha = 0.25;
+  ctx.lineWidth = Math.max(2, W*0.0025);
+  ctx.beginPath();
+  ctx.moveTo(W*0.06, groundY);
+  ctx.lineTo(W*0.94, groundY);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // block contact area based on A
+  const areaNorm = (A-1)/99; // 0..1
+  const contactW = W*(0.10 + 0.55*areaNorm);
+  const contactH = H*0.06;
+  const blockH = H*0.16;
+
+  const x = cx - contactW/2;
+  const y = groundY - contactH;
+
+  // block
+  ctx.fillStyle = "#0b1020";
+  ctx.globalAlpha = 0.95;
+  ctx.fillRect(x, y-blockH, contactW, blockH+contactH);
+  ctx.globalAlpha = 1;
+
+  // label
+  ctx.fillStyle = "#0b1020";
+  ctx.font = `${Math.round(H*0.045)}px system-ui`;
+  ctx.fillText("PRESSURE SIMULATION", Math.round(W*0.06), Math.round(H*0.10));
+  ctx.font = `${Math.round(H*0.038)}px system-ui`;
+  ctx.fillStyle = "#4a5568";
+  ctx.fillText("P = Force / Area", Math.round(W*0.06), Math.round(H*0.16));
+
+  // force arrow (pulsing)
+  const pulse = 0.5 + 0.5*Math.sin(now*0.006);
+  const arrowLen = H*(0.20 + 0.10*pulse + 0.08*impact);
+  const topY = y - blockH - arrowLen;
+  const bottomY = y - blockH - H*0.01;
+
+  ctx.strokeStyle = "#2b59ff";
+  ctx.lineWidth = Math.max(4, W*0.004);
+  ctx.beginPath();
+  ctx.moveTo(cx, topY);
+  ctx.lineTo(cx, bottomY);
+  ctx.stroke();
+
+  // arrow head
+  ctx.beginPath();
+  ctx.moveTo(cx - W*0.018, bottomY - H*0.03);
+  ctx.lineTo(cx, bottomY);
+  ctx.lineTo(cx + W*0.018, bottomY - H*0.03);
+  ctx.stroke();
+
+  // “dents/spikes” show pressure
+  const spikes = 22;
+  const spikeMax = H*(0.01 + 0.12*pNorm + 0.10*impact);
+  ctx.strokeStyle = "#00b894";
+  ctx.lineWidth = Math.max(2, W*0.0022);
+
+  for (let i=0;i<spikes;i++){
+    const t = i/(spikes-1);
+    const sx = x + t*contactW;
+    const wobble = 0.85 + 0.15*Math.sin(now*0.01 + i);
+    const shape = 0.35 + 0.65*Math.sin(Math.PI*t);
+    const len = spikeMax * wobble * shape;
+    ctx.beginPath();
+    ctx.moveTo(sx, groundY);
+    ctx.lineTo(sx, groundY + len);
+    ctx.stroke();
+  }
+
+  // Info cards on canvas (numbers)
+  const cardX = W*0.06, cardY = H*0.22, cardW = W*0.36, cardH = H*0.22;
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.strokeStyle = "rgba(11,16,32,0.12)";
+  ctx.lineWidth = Math.max(2, W*0.002);
+  roundRect(ctx, cardX, cardY, cardW, cardH, 16, true, true);
+
+  ctx.fillStyle = "#0b1020";
+  ctx.font = `${Math.round(H*0.035)}px system-ui`;
+  ctx.fillText(`Force (F): ${F} N`, Math.round(cardX + cardW*0.06), Math.round(cardY + cardH*0.35));
+  ctx.fillText(`Area (A): ${A} cm²`, Math.round(cardX + cardW*0.06), Math.round(cardY + cardH*0.58));
+
+  ctx.fillStyle = "#2b59ff";
+  ctx.font = `${Math.round(H*0.045)}px system-ui`;
+  ctx.fillText(`Pressure: ${Math.round(P)} Pa`, Math.round(cardX + cardW*0.06), Math.round(cardY + cardH*0.84));
+
+  // colorful “image icons”
+  const imgSize = Math.min(W,H)*0.18;
+  drawSVG(ctx, svgHand,  W*0.06, H*0.50, imgSize, imgSize);
+  drawSVG(ctx, svgNeedle,W*0.26, H*0.50, imgSize, imgSize);
+  drawSVG(ctx, svgStrap, W*0.46, H*0.50, imgSize, imgSize);
+
+  // captions
+  ctx.fillStyle = "#4a5568";
+  ctx.font = `${Math.round(H*0.03)}px system-ui`;
+  ctx.fillText("Force",  Math.round(W*0.06), Math.round(H*0.50 + imgSize + H*0.03));
+  ctx.fillText("Small area → High pressure", Math.round(W*0.26), Math.round(H*0.50 + imgSize + H*0.03));
+  ctx.fillText("Large area → Low pressure",  Math.round(W*0.46), Math.round(H*0.50 + imgSize + H*0.03));
+
+  requestAnimationFrame(draw);
+}
+
+function roundRect(ctx, x, y, w, h, r, fill, stroke){
+  const rr = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+rr,y);
+  ctx.arcTo(x+w,y,x+w,y+h,rr);
+  ctx.arcTo(x+w,y+h,x,y+h,rr);
+  ctx.arcTo(x,y+h,x,y,rr);
+  ctx.arcTo(x,y,x+w,y,rr);
+  ctx.closePath();
+  if (fill) ctx.fill();
+  if (stroke) ctx.stroke();
+}
+
+/* ---------- Events ---------- */
+function onSlider(){
+  clickBeep(760, 0.035);
+}
+forceEl.addEventListener("input", onSlider);
+areaEl.addEventListener("input", onSlider);
+
+soundToggle.addEventListener("click", async ()=>{
+  ensureAudio();
+  if (audioCtx.state === "suspended") await audioCtx.resume();
+  enabled = !enabled;
+  soundToggle.classList.toggle("off", !enabled);
+  soundToggle.textContent = enabled ? "🔊 Sound ON" : "🔇 Sound OFF";
+  clickBeep(enabled ? 900 : 300, 0.06);
+});
+
+pressBtn.addEventListener("click", ()=>{
+  const F = Number(forceEl.value);
+  const A = Number(areaEl.value);
+  const P = pressurePa(F,A);
+  const pNorm = clamp(P / 160000, 0, 1);
+  impact = 1;
+  thump(pNorm);
+});
+
+needleBtn.addEventListener("click", ()=>{ forceEl.value=40; areaEl.value=2; clickBeep(880,0.05); impact=0.6; });
+heelBtn.addEventListener("click",   ()=>{ forceEl.value=80; areaEl.value=4; clickBeep(880,0.05); impact=0.6; });
+strapBtn.addEventListener("click",  ()=>{ forceEl.value=60; areaEl.value=40; clickBeep(880,0.05); impact=0.6; });
+resetBtn.addEventListener("click",  ()=>{ forceEl.value=50; areaEl.value=10; clickBeep(500,0.05); impact=0.3; });
+
+/* ---------- Start ---------- */
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
